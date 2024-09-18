@@ -131,9 +131,29 @@ void * my_jv_output(pTHX_ jv jval) {
     else if (kind == JV_KIND_STRING) {
         // string
         //fprintf(stderr, "my_jv_output() got string: %s\n", jv_string_value(jval));
-        //return newSVpvn(jv_string_value(jval), jv_string_length_bytes(jval));
-        // NOTE: this might introduce unicode bug..
-        return newSVpvf("%s", jv_string_value(jval));
+        SV *sv = newSVpvn(jv_string_value(jval), jv_string_length_bytes(jval));
+        if (PL_curcop) {
+          const PERL_CONTEXT *cx = caller_cx(0, NULL);
+          U32 hints = CopHINTS_get(cx ? cx->blk_oldcop : PL_curcop);
+
+          if (hints & HINT_UTF8) {
+            STRLEN len;
+            const char *chr = SvPV(sv, len);
+            //fprintf(stderr, "# UTF-8 mode is active (use utf8; is in scope) %d.\n", hints);
+            if(!SvUTF8(sv) && is_utf8_string((const U8*)chr, len)) {
+              //fprintf(stderr, "# is_utf8_string() == false  %d.\n", len);
+              SvUTF8_on(sv);
+            }
+            assert(is_utf8_string((const U8*)chr, len));
+          //} else {
+          //  fprintf(stderr, "# UTF-8 mode is not active (no utf8; is in scope) %d.\n", hints);
+          }
+        //} else {
+        //  fprintf(stderr, "# No current cop (context) available.\n");
+        }
+        return sv;
+        /* NOTE: this might introduce unicode bug.. */
+        // return newSVpvf("%s", jv_string_value(jval));
     }
     else if (kind == JV_KIND_ARRAY) {
         // array
