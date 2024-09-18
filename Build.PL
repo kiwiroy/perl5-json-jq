@@ -32,4 +32,10 @@ my $build = Module::Build->new(
     },
     Alien::Base::Wrapper->mb_args,
 );
+
+if ($ENV{GITHUB_TOKEN}) {
+  my $gcov_flags = '-fprofile-arcs -ftest-coverage';
+  $build->config(ccflags => join ' ', $build->config->{ccflags}, $gcov_flags);
+  $build->config(lddlflags => join ' ', $build->config->{lddlflags}, $gcov_flags);
+}
 $build->create_build_script;

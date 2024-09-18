@@ -11,14 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        perl-version:
-          - '5.30'
-          - '5.34'
-          - '5.36'
+        perl-version: ['5.30', '5.34', '5.36']
+        include:
+          - perl-version: '5.40'
+            coverage: true
     container:
       image: perl:${{ matrix.perl-version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          set-safe-directory: true
       - name: perl -V
         run: perl -V
       - name: Install dependencies
@@ -27,4 +29,18 @@ jobs:
           perl ./Build.PL
           ./Build installdeps --cpan_client 'cpanm -n -q'
       - name: Run tests
+        if:  ${{ !matrix.coverage }}
         run:  ./Build test verbose=1
+      - name: Run coverage
+        if: ${{ matrix.coverage }}
+        env:
+          DEVEL_COVER_OPTIONS: '-ignore,Build,+ignore,^local,gcov_chdir,relative_only'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cpanm -n -q Devel::Cover Devel::Cover::Report::Coveralls Pod::Coverage
+          ./Build realclean
+          perl ./Build.PL
+          ./Build
+          ./Build testcover verbose=1
+          chown -R $(id -u):$(id -g) $PWD
+          cover -report Coveralls
