@@ -1,6 +1,6 @@
 # -*- perl -*-
 use utf8;
-use Test::More tests => 14;
+use Test::More tests => 15;
 use Test::Number::Delta;
 
 use strict;
@@ -29,7 +29,15 @@ is_deeply($jq1->process({ data => $input104 }), $input104_expected);
 
 my $input105 = { key1 => '你好' };
 my $input105_expected = $input105;
-is_deeply($jq1->process({ data => $input105 }), $input105_expected);
+is_deeply($jq1->process({ data => $input105 }), $input105_expected, 'high code point and `use utf8;`');
+
+{
+  no utf8;
+  my $input105 = { key1 => '你好' };
+  my $input105_expected = $input105;
+  my $jqx = JSON::JQ->new({ script => '.' });
+  is_deeply($jqx->process({ data => $input105 }), $input105_expected, 'high code point and `no utf8;`');
+}
 
 my $input106 = { key1 => \do { my $a = 0 }, key2 => \do { my $b = 1 } };
 my $input106_expected = { key1 => JSON::false(), key2 => JSON::true() };
